@@ -2,8 +2,11 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ncurses.h>
+
 
 #define NUMOFTHREADS 3
+volatile char last_key = ' '; // shared variable, we dont want the system to optomise it
 
 void* thread_function(void* arg) {
     int id = *(int*)arg;
@@ -28,33 +31,66 @@ void* input_thread(void* arg)
 
         if (bytes > 0)
         {
-            printf("Input: %.*s\n", bytes, buffer);
+           last_key = buffer[0];
+           usleep(1000); 
         }
+
+        
     }
+
+    
 
     close(fd);
     return NULL;
 }
 
+void* render_thread(void* arg)
+{
+    initscr();
+    noecho();
+    curs_set(0);
+
+    while (1)
+    {
+        clear();
+        mvprintw(5, 10, "Key Pressed: %c", last_key);
+        refresh();
+
+        usleep(50000);   // small delay so cpu isn't maxed
+    }
+
+    endwin();
+    return NULL;
+}
+    
+
+
 int main() {
 
     pthread_t threads[NUMOFTHREADS];
     int ids[NUMOFTHREADS];
-
-    for (int i = 0; i < NUMOFTHREADS - 1; i++) {
-        ids[i] = i;
-
-        if (pthread_create(&threads[i], NULL, thread_function, &ids[i]) != 0) {
-            perror("pthread_create");
-            return 1;
+    for (int i = 0; i < NUMOFTHREADS; i++)
+     {
+         ids[i] = i;
         }
-    }
 
-    if (pthread_create(&threads[2], NULL, input_thread, NULL) != 0) {
+
+    if (pthread_create(&threads[0], NULL, input_thread, NULL) != 0) {
         perror("pthread_create");
         return 1;
     }
 
+    if (pthread_create(&threads[1], NULL, render_thread, NULL) != 0) {
+        perror("pthread_create");
+        return 1;
+    }
+
+    if (pthread_create(&threads[2], NULL, thread_function, &ids[2]) != 0) {
+        perror("pthread_create");
+        return 1;
+    }
+
+   
     // wait for the threads
     for (int i = 0; i < NUMOFTHREADS; i++) {
         pthread_join(threads[i], NULL);
