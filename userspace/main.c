@@ -8,6 +8,7 @@
 #define NUMOFTHREADS 3
 volatile char last_key = ' '; // shared variable, we dont want the system to optomise it
 volatile int currentScreen = 0;
+int driverFD = 0;
 
 
 void drawGame1();
@@ -118,9 +119,25 @@ void* render_thread(void* arg)
     return NULL;
 }
     
-void drawGame1() {
-    mvprintw(18, 10, "MINIGAME 1");
-    mvprintw(15, 10, "Press keys to play");
+void drawGame1()
+{
+    static char prev_key = ' ';
+
+    mvprintw(4,10,"MEMORY LEAK GAME");
+    mvprintw(6,10,"A - Allocate Kernel Memory");
+    mvprintw(7,10,"F - Free Kernel Memory");
+    mvprintw(9,10,"Fix the memory leak!");
+
+    if(last_key != prev_key)
+    {
+        if(last_key == 'a')
+            write(driverFD, "A", 1);
+
+        if(last_key == 'f')
+            write(driverFD, "F", 1);
+
+        prev_key = last_key;
+    }
 }
 
 void drawGame2() {
@@ -148,6 +165,16 @@ void drawGame7() {
 }
 
 int main() {
+
+
+
+    driverFD = open("/dev/kw" , O_RDWR);
+    if(driverFD < 0)
+    {
+        perror("Failed to open the driver");
+        return 1;
+    }
+
 
     pthread_t threads[NUMOFTHREADS];
     int ids[NUMOFTHREADS];
