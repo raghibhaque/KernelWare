@@ -10,3 +10,4 @@ modules.order
 compile_commands.json
 .cache
 .clangd
+*.o.d

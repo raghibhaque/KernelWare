@@ -1,12 +1,14 @@
 #include "kernelware.h"
 
+#include "../shared/kw_ioctl.h"
+#include "kw_driver.h"
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
-
 
 static dev_t dev_num;
 static struct cdev my_cdev;
@@ -17,11 +19,15 @@ static int data_ready = 0;              // condition flag
 static char kernel_buf[256];
 static int buf_len = 0;
 
+atomic_t open_count = ATOMIC_INIT(0);
+struct kw_state  current_state  = {0};
+struct kw_config current_config = {0};
+
 // Define the shared state here
 struct my_driver_state drv_state = {0};
 
 
-static ssize_t read(struct file *file, char __user *buf, size_t len, loff_t *off)
+static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
     if (*off > 0) return 0;
 
@@ -39,7 +45,7 @@ static ssize_t read(struct file *file, char __user *buf, size_t len, loff_t *off
 }
 
 
-static ssize_t write(struct file *file, const char __user *buf, size_t len, loff_t *off)
+static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 {
     int bytes = min(len, sizeof(kernel_buf) - 1);
 
@@ -56,12 +62,70 @@ static ssize_t write(struct file *file, const char __user *buf, size_t len, loff
 }
 
 
+static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
+{
+    switch (cmd) {
+
+    case KW_IOCTL_START:
+        // no data, just start a round
+        return 0;
+
+    case KW_IOCTL_GET_STATE:
+        // copy state struct to userspace
+        if (copy_to_user((struct kw_state __user *)arg,
+                         &current_state,
+                         sizeof(struct kw_state)))
+            return -EFAULT;
+        return 0;
+
+    case KW_IOCTL_SET_CONFIG:
+        // copy config struct from userspace
+        if (copy_from_user(&current_config,
+                           (struct kw_config __user *)arg,
+                           sizeof(struct kw_config)))
+            return -EFAULT;
+        return 0;
+
+    default:
+        return -ENOTTY;  // standard "not a valid ioctl" error
+    }
+}
+
+
+static int kw_open(struct inode *inode, struct file *filp)
+{
+    if (atomic_inc_return(&open_count) > 1) {
+        atomic_dec(&open_count);
+        return -EBUSY;
+    }
+
+    // clear leftover state from previous session 
+    memset(&current_state, 0, sizeof(current_state));
+    data_ready = 0;
+    buf_len    = 0;
+    memset(kernel_buf, 0, sizeof(kernel_buf));
+
+    pr_info("kernelware: opened\n");
+    return 0;
+}
+
+static int kw_release(struct inode *inode, struct file *filp)
+{
+    atomic_dec(&open_count);
+    pr_info("kernelware: closed\n");
+    return 0;
+}
+
+
 static struct file_operations fops = {
     .owner = THIS_MODULE,
-    //.open = ,
-    .read = read,
-    .write = write,
+    .open = kw_open,
+    .release = kw_release,
+    .read = kw_read,
+    .write = kw_write,
+    .unlocked_ioctl = kw_ioctl
 };
+
 
 //sets permissions
 static char *kernelware_devnode(const struct device *dev, umode_t *mode)
@@ -70,6 +134,7 @@ static char *kernelware_devnode(const struct device *dev, umode_t *mode)
         *mode = 0666;
     return NULL;
 }
+
 
 static int __init my_module_init(void)
 {
@@ -117,3 +182,5 @@ module_init(my_module_init);
 module_exit(my_module_exit);
 
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("KernelWare: HardwareIntegrated Micro-Game Engine");
+MODULE_AUTHOR("Aiden, Cathal, Raghib, Tom");

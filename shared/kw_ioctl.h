@@ -53,6 +53,5 @@ struct kw_stats {
 #define KW_IOCTL_GET_STATS     _IOR(KW_MAGIC, 6, struct kw_stats)
 #define KW_IOCTL_GET_STATE     _IOR(KW_MAGIC, 7, struct kw_state)
 #define KW_IOCTL_RESET_SCORE   _IO (KW_MAGIC, 8)
-#define KW_IOCTL_LED_TEST      _IO (KW_MAGIC, 9)
 
 #endif /* KW_IOCTL_H */
