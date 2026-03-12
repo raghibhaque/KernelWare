@@ -58,18 +58,13 @@ int timeLimit[4]   = {0, 60, 45, 30};
 
 void* input_thread(void* arg)
 {
-    int fd = open("/dev/kw", O_RDONLY);
-
-    if (fd < 0) {
-        perror("Failed to open /dev/kw"); // flag since if its less than 0, it has failed
-        return NULL;
-    }
+    
 
     char buffer[16];
 
     while (1)
     {
-        int bytes = read(fd, buffer, sizeof(buffer));
+        int bytes = read(driverFD, buffer, sizeof(buffer));
 
         if (bytes > 0)
         {
@@ -113,7 +108,6 @@ void* input_thread(void* arg)
     }
     
 
-    close(fd);
     return NULL;
 }
 
