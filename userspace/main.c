@@ -5,7 +5,6 @@
 #include <ncurses.h>
 #include <sys/ioctl.h>
 #include "../shared/kw_ioctl.h"
-#include "input.h"
 
 #define NUMOFTHREADS 3
 volatile char last_key = ' '; // shared variable, we dont want the system to optomise it
