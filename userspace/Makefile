@@ -7,6 +7,7 @@ SRCS = main.c \
        games/games.c \
        games/game_pipedream.c \
        games/game_killit.c
+       games/game_memleak.c
 
 all: game
 
