@@ -2,9 +2,12 @@
 
 #include "../shared/kw_ioctl.h"
 #include "kw_driver.h"
+#include "kw_state.h"
 #include "kw_games.h"
+#include "kw_timer.h"
 
 #include <linux/init.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -84,13 +87,23 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         kw_game_start(current_state.game_id);
         return 0;
 
-    case KW_IOCTL_GET_STATE:
-        // copy state struct to userspace
-        if (copy_to_user((struct kw_state __user *)arg,
-                         &current_state,
-                         sizeof(struct kw_state)))
+    
+
+    case KW_IOCTL_SET_DIFF:
+        kw_set_timer_ms((unsigned int)arg);
+        return 0;
+
+    case KW_IOCTL_GET_STATE: {
+        struct kw_state s = current_state;
+        u64 now = ktime_get_ns();
+        if (s.deadline_ns > now)
+            s.score = (int)(100 - ((s.deadline_ns - now) * 100 / ((u64)timer_duration_ms * 1000000ULL)));
+        else
+            s.score = 100;
+        if (copy_to_user((struct kw_state __user *)arg, &s, sizeof(s)))
             return -EFAULT;
         return 0;
+    }
 
     case KW_IOCTL_SET_CONFIG:
         // copy config struct from userspace
@@ -193,12 +206,15 @@ static int __init my_module_init(void)
         return -1;
     }
 
+    kw_timer_init();
+    kw_state_init();
     pr_info("KernelWare: loaded\n");
     return 0;
 }
 
 static void __exit my_module_exit(void) {
-    kw_game_stop();              // ← add this first
+    kw_game_stop();
+    kw_timer_exit();
     my_proc_exit();
     device_destroy(my_class, dev_num);
     class_destroy(my_class);

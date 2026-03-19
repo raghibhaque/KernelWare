@@ -12,14 +12,14 @@ struct kw_state {
     int game_id;
     int score;
     int lives;
-    double difficulty;
+    int difficulty;
     uint64_t deadline_ns;
     char prompt[256];
 };
 
 struct kw_config {
     int timeout_ms;
-    double difficulty;
+    int difficulty;
     int lives;
 };
 

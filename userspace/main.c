@@ -12,6 +12,7 @@
 #define NUMOFTHREADS 3
 volatile char last_key = ' '; // shared variable, we dont want the system to optomise it
 volatile int currentScreen = 0;
+volatile int input_active = 0;
 int driverFD = 0;
 
 volatile int active_game = -1;
@@ -59,7 +60,6 @@ void *input_thread(void *arg) {
 
 void* render_thread(void* arg)
 {
-    (void)arg;
     initscr();
     noecho();
     curs_set(0);

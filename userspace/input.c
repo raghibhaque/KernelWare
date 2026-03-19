@@ -13,6 +13,7 @@ static int drv_fd = -1;
 
 // To update the menu screen
 extern volatile int currentScreen;
+extern volatile int input_active;
 
 extern game_def_t games[];
 extern int num_games;
@@ -66,14 +67,49 @@ static struct key_mapping keymap[] = {
 static int keymap_size = sizeof(keymap) / sizeof(keymap[0]);
 
 
-//For Nav keys
+//For Nav keys - all route to screen 1 (start signal)
 static struct nav_mapping navmap[] = {
     { KEY_1, 1 },
-    { KEY_2, 2 },
-    { KEY_3, 3 },
+    { KEY_2, 1 },
+    { KEY_3, 1 },
 };
 static int navmap_size = sizeof(navmap) / sizeof(navmap[0]);
 
+
+static int kw_getch(void)
+{
+    unsigned char c;
+    read(STDIN_FILENO, &c, 1);
+    return c;
+}
+
+// logic to manage user ssh input
+static void ssh_input_loop(void)
+{
+    while (1) {
+        // yield stdin to the game when it's handling its own input (e.g. kill-it)
+        if (input_active) { usleep(10000); continue; }
+
+        int c = kw_getch();
+
+        if (currentScreen <= 0) {
+            currentScreen++;  // -1 (game over) -> 0 (start), 0 (start) -> 1 (game)
+            continue;
+        }
+
+        for (int i = 0; i < keymap_size; i++) {
+            if (keymap[i].character == c) {
+                last_key = c;
+                if (drv_fd >= 0) {
+                    unsigned char event_byte = KW_EVENT_BTN(keymap[i].btn_index);
+                    if (write(drv_fd, &event_byte, 1) < 0)
+                        perror("input: write to driver");
+                }
+                break;
+            }
+        }
+    }
+}
 
 void *kw_input_thread(void *arg) // arg isn't used but compiler will give a waring as in pthread signature
 {
@@ -87,8 +123,7 @@ void *kw_input_thread(void *arg) // arg isn't used but compiler will give a wari
 
     int kbd_fd = open(kbd_dev, O_RDONLY);
     if (kbd_fd < 0) {
-        perror("input: failed to open keyboard device");
-        fprintf(stderr, "Hint: set KW_KBD_DEV=/dev/input/eventX\n");
+        ssh_input_loop();
         return NULL;
     }
 

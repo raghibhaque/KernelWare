@@ -1,13 +1,25 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include "kernelware.h"
+#include "kw_state.h"
 
-#define PROC_NAME "kernelware"
+#define PROC_DIR_NAME "kernelware"
+#define PROC_FILE_NAME "stats"
+
+static struct proc_dir_entry *proc_dir;
+static struct proc_dir_entry *proc_stats;
 
 static int my_proc_show(struct seq_file *m, void *v) {
+    //drivers
     seq_printf(m, "open_count:  %d\n", drv_state.open_count);
     seq_printf(m, "read_count:  %d\n", drv_state.read_count);
     seq_printf(m, "write_count: %d\n", drv_state.write_count);
+
+    // game state (from kw_ioctl.h)
+    char buf[512];
+    int len = kw_state_get_info(buf, sizeof(buf));
+    if (len > 0)
+        seq_printf(m, "%s", buf);
     return 0;
 }
 
@@ -23,15 +35,25 @@ static const struct proc_ops my_proc_ops = {
 };
 
 int my_proc_init(void) {
-    if (!proc_create(PROC_NAME, 0444, NULL, &my_proc_ops)) {
-        printk(KERN_ERR "KernelWare: failed to create /proc/%s\n", PROC_NAME);
+    proc_dir = proc_mkdir(PROC_DIR_NAME, NULL);
+    if (!proc_dir) {
+        pr_err("KernelWare: failed to create /proc/%s\n", PROC_DIR_NAME);
         return -ENOMEM;
     }
-    printk(KERN_INFO "KernelWare: created /proc/%s\n", PROC_NAME);
+
+    proc_stats = proc_create(PROC_FILE_NAME, 0444, proc_dir, &my_proc_ops);
+    if (!proc_stats) {
+        pr_err("KernelWare: failed to create /proc/%s/%s\n", PROC_DIR_NAME, PROC_FILE_NAME);
+        remove_proc_entry(PROC_DIR_NAME, NULL);
+        return -ENOMEM;
+    }
+
+    pr_info("KernelWare: created /proc/%s/%s\n", PROC_DIR_NAME, PROC_FILE_NAME);
     return 0;
 }
 
 void my_proc_exit(void) {
-    remove_proc_entry(PROC_NAME, NULL);
-    printk(KERN_INFO "KernelWare: removed /proc/%s\n", PROC_NAME);
+    remove_proc_entry(PROC_FILE_NAME, proc_dir);   // file first
+    remove_proc_entry(PROC_DIR_NAME, NULL);         // then dir
+    pr_info("KernelWare: removed /proc/%s\n", PROC_DIR_NAME);
 }

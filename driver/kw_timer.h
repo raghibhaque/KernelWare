@@ -12,6 +12,6 @@ void kw_timer_stop(void); // stop current timer
 
 void kw_timer_exit(void); // call this function during the module exit
 
-bool kw_timer_is_active(void);
+bool kw_timer_is_active(void); // this doesn't get called (for now)
 
 #endif
