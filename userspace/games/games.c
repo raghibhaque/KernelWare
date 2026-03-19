@@ -16,6 +16,10 @@ void game_killit_draw(void);
 int  game_memleak_run(int fd);
 void game_memleak_draw(void);
 
+int  game_typefaster_run(int fd);
+void game_typefaster_draw(void);
+
+
 
 game_def_t games[] = {
     {
@@ -41,6 +45,13 @@ game_def_t games[] = {
         .input_mode = INPUT_MODE_BUTTONS,
         .run  = game_memleak_run,
         .draw = game_memleak_draw,
+    },
+    {
+        .name       = "TYPE FASTER - Mash keys to win",
+        .input_mode = INPUT_MODE_BUTTONS,
+        .run        = game_typefaster_run,
+        .draw       = game_typefaster_draw,
+
     },
 };
 int num_games = sizeof(games) / sizeof(games[0]);
