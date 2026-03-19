@@ -3,11 +3,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <linux/input.h>
+#include <stdlib.h>
 #include "../shared/kw_ioctl.h"
-
-
-// Where input is read from
-#define KBD_DEVICE "/dev/input/event18"
 
 static int drv_fd = -1;
 
@@ -56,12 +53,16 @@ void *kw_input_thread(void *arg) // arg isn't used but compiler will give a wari
 
     struct input_event ev;
 
-    int kbd_fd = open(KBD_DEVICE, O_RDONLY);
+    const char *kbd_dev = getenv("KW_KBD_DEV");
+    if (!kbd_dev)
+        kbd_dev = "/dev/input/event18";  // fallback default
+
+    int kbd_fd = open(kbd_dev, O_RDONLY);
     if (kbd_fd < 0) {
-        perror("input: failed to open " KBD_DEVICE);
+        perror("input: failed to open keyboard device");
+        fprintf(stderr, "Hint: set KW_KBD_DEV=/dev/input/eventX\n");
         return NULL;
     }
-    printf("input: listening on " KBD_DEVICE "\n");
 
     while (1)
     {

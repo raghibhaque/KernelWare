@@ -30,6 +30,7 @@ struct my_driver_state drv_state = {0};
 
 static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
+    drv_state.read_count++;
     if (wait_event_interruptible(my_wq, data_ready != 0))
         return -ERESTARTSYS;
 
@@ -45,6 +46,7 @@ static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *
 
 static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 {
+    drv_state.write_count++;
     int bytes = min(len, sizeof(kernel_buf) - 1);
 
     if (copy_from_user(kernel_buf, buf, bytes))
@@ -70,6 +72,7 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     switch (cmd) {
 
     case KW_IOCTL_START:
+        current_state.game_id = 1;
         kw_game_start(current_state.game_id);
         return 0;
 
@@ -101,6 +104,7 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 static int kw_open(struct inode *inode, struct file *filp)
 {
+    drv_state.open_count++;
     if (atomic_inc_return(&open_count) > 1) {
         atomic_dec(&open_count);
         return -EBUSY;
@@ -118,6 +122,7 @@ static int kw_open(struct inode *inode, struct file *filp)
 
 static int kw_release(struct inode *inode, struct file *filp)
 {
+    drv_state.open_count--;
     kw_game_stop();
     atomic_dec(&open_count);
     pr_info("kernelware: closed\n");
