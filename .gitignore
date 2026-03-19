@@ -13,7 +13,9 @@ compile_commands.json
 *.o.d
 KernelWare_Plan.xlsx
 KernelWare_Design_Document.docx
+branch_summary.docx
 game
+*.pem
 
 # userspace compiled binaries
 /userspace/kernelware

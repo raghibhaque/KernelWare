@@ -17,8 +17,8 @@ struct kw_game_state {
     int current_game_id;
     int score;
     int lives;
-    double difficulty; // reduces the amount of remaining time
-    int deadline_ns; // time to complete mini-game (I think)
+    int difficulty; // scaled x10: 10 = 1.0x, 9 = 0.9x, etc.
+    u64 deadline_ns; // time to complete mini-game (nanoseconds)
     int games_played;
     bool game_active;
     bool answer_correct;

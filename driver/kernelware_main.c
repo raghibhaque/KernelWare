@@ -2,9 +2,12 @@
 
 #include "../shared/kw_ioctl.h"
 #include "kw_driver.h"
+#include "kw_state.h"
 #include "kw_games.h"
+#include "kw_timer.h"
 
 #include <linux/init.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -30,6 +33,7 @@ struct my_driver_state drv_state = {0};
 
 static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
+    drv_state.read_count++;
     if (wait_event_interruptible(my_wq, data_ready != 0))
         return -ERESTARTSYS;
 
@@ -45,6 +49,7 @@ static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *
 
 static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 {
+    drv_state.write_count++;
     int bytes = min(len, sizeof(kernel_buf) - 1);
 
     if (copy_from_user(kernel_buf, buf, bytes))
@@ -70,16 +75,30 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     switch (cmd) {
 
     case KW_IOCTL_START:
+        current_state.game_id = (int)arg;
         kw_game_start(current_state.game_id);
         return 0;
 
-    case KW_IOCTL_GET_STATE:
-        // copy state struct to userspace
-        if (copy_to_user((struct kw_state __user *)arg,
-                         &current_state,
-                         sizeof(struct kw_state)))
+    case KW_IOCTL_STOP:
+        kw_game_stop();
+        kw_state_next_game();
+        return 0;
+
+    case KW_IOCTL_SET_DIFF:
+        kw_set_timer_ms((unsigned int)arg);
+        return 0;
+
+    case KW_IOCTL_GET_STATE: {
+        struct kw_state s = current_state;
+        u64 now = ktime_get_ns();
+        if (s.deadline_ns > now)
+            s.score = (int)(100 - ((s.deadline_ns - now) * 100 / ((u64)timer_duration_ms * 1000000ULL)));
+        else
+            s.score = 100;
+        if (copy_to_user((struct kw_state __user *)arg, &s, sizeof(s)))
             return -EFAULT;
         return 0;
+    }
 
     case KW_IOCTL_SET_CONFIG:
         // copy config struct from userspace
@@ -101,6 +120,7 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 static int kw_open(struct inode *inode, struct file *filp)
 {
+    drv_state.open_count++;
     if (atomic_inc_return(&open_count) > 1) {
         atomic_dec(&open_count);
         return -EBUSY;
@@ -118,6 +138,7 @@ static int kw_open(struct inode *inode, struct file *filp)
 
 static int kw_release(struct inode *inode, struct file *filp)
 {
+    drv_state.open_count--;
     kw_game_stop();
     atomic_dec(&open_count);
     pr_info("kernelware: closed\n");
@@ -177,12 +198,15 @@ static int __init my_module_init(void)
         return -1;
     }
 
+    kw_timer_init();
+    kw_state_init();
     pr_info("KernelWare: loaded\n");
     return 0;
 }
 
 static void __exit my_module_exit(void) {
-    kw_game_stop();              // ← add this first
+    kw_game_stop();
+    kw_timer_exit();
     my_proc_exit();
     device_destroy(my_class, dev_num);
     class_destroy(my_class);

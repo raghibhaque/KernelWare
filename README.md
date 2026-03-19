@@ -5,4 +5,13 @@
 
 ---
 
+## Setup
+
+```bash
+cd KernelWare/scripts/
+sudo bash QuickStart.sh
+cd ../userspace/
+./game
+```
+
 Dr. Mark Burkley Project making a Linux Kernel Module (LKM.)

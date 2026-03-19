@@ -1,5 +1,5 @@
-#ifndef KW_STATE_H
-#define KW_STATE_H
+#ifndef KW_DRIVER_H
+#define KW_DRIVER_H
 
 #include <linux/atomic.h>
 #include "../shared/kw_ioctl.h"

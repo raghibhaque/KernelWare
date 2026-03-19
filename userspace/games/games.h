@@ -6,7 +6,7 @@
 // Interface that everygame must implement
 typedef struct {
     const char *name;
-    void (*run)(int fd);
+    int  (*run)(int fd);  // returns 1 on win, 0 on timeout
     void (*draw)(void);
 } game_def_t;
 
