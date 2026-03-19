@@ -1,8 +1,3 @@
-// Non-working atm
-
-// Needs randomised games for the kw_state_start_round().
-// Needs another randomised game that isn't the previous game for kw_state_start_round().
-
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/ktime.h>
@@ -14,6 +9,7 @@
 
 struct kw_game_state game_state;
 
+// called in /kernelware_main.c to initalise the game state struct (spinlockm wiat queues) when loading the module
 void kw_state_init(void) {
     pr_info("Initialising game state...\n");
 
@@ -26,7 +22,8 @@ void kw_state_init(void) {
     pr_info("Game state initialised.\n");
 }
 
-void kw_state_start_round(char playerName[16]) {
+// called in kw_games.c to advance player to the next game before the time runs out
+void kw_state_start_round(char playerName[16]) { // usernames aren't implemented yet - might do leaderboard if we've time
     unsigned long flags;
 
     pr_info("Starting new round | difficulty=%d\n", game_state.difficulty);
@@ -53,6 +50,7 @@ void kw_state_start_round(char playerName[16]) {
     spin_unlock_irqrestore(&game_state.lock, flags);
 }
 
+// called in /kernelware_main.c when KW_IOCTL_STOP is called to advance the user to the next games
 void kw_state_next_game(void) {
     unsigned long flags;
 
@@ -74,6 +72,7 @@ void kw_state_next_game(void) {
     spin_unlock_irqrestore(&game_state.lock, flags);
 }
 
+// called in kw_timer.c - decrements 1 of the user's lives and selects the next game at random
 void kw_state_timeout(void) {
     unsigned long flags;
 
@@ -95,7 +94,7 @@ void kw_state_timeout(void) {
     spin_unlock_irqrestore(&game_state.lock, flags);
 }
 
-void kw_state_reset(void) {
+void kw_state_reset(void) { // not called in the project anywhere yet
     unsigned long flags;
 
     pr_info("Resetting game state.\n");
@@ -119,7 +118,7 @@ void kw_state_reset(void) {
     pr_info("Game state reset complete\n");
 }
 
-int kw_state_get_info(char *buf, size_t size) {
+int kw_state_get_info(char *buf, size_t size) { // not called in the project anywhere yet
     unsigned long flags;
     int len;
 

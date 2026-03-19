@@ -8,9 +8,12 @@
 #include "kw_driver.h"
 #include "../shared/kw_ioctl.h"
 
-static struct hrtimer game_timer;
+static struct hrtimer game_timer; // nanosecond kernal timer
 static bool timer_active = false;
 
+// this function is called when a game timer hits 0 before the user submits the correct answer/ winning condition
+// checks if user answered correctly
+// updated game state (next game/ timeout)
 static enum hrtimer_restart kw_timer_callback(struct hrtimer *timer) {
     unsigned long flags;
     bool correct;
@@ -33,13 +36,14 @@ static enum hrtimer_restart kw_timer_callback(struct hrtimer *timer) {
     return HRTIMER_NORESTART;
 }
 
+// called in kernelware_main.c when loading the module
 int kw_timer_init(void) {
-    hrtimer_init(&game_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-    game_timer.function = kw_timer_callback;
+    hrtimer_setup(&game_timer, kw_timer_callback,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     timer_active = false;
     return 0;
 }
 
+// called in kw_games.c to start the countdown the mini-games
 int kw_timer_start(unsigned int timeout_ms) {
     ktime_t ktime_interval;
 
@@ -52,6 +56,7 @@ int kw_timer_start(unsigned int timeout_ms) {
     return 0;
 }
 
+// called in kw_games.c when the game is stopped prematurely
 void kw_timer_stop(void) {
     if (timer_active) {
         hrtimer_cancel(&game_timer);
@@ -59,6 +64,7 @@ void kw_timer_stop(void) {
     }
 }
 
+// called in kernelware_main.c to cancel timers and unloading the module
 void kw_timer_exit(void) {
     if (timer_active) {
         hrtimer_cancel(&game_timer);
@@ -66,6 +72,6 @@ void kw_timer_exit(void) {
     }
 }
 
-bool kw_timer_is_active(void) {
+bool kw_timer_is_active(void) { // not called in the project anywhere yet
     return timer_active;
 }
