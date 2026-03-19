@@ -37,6 +37,7 @@ static int lb_remaining = 0;
 
 // Hack the Host
 static char hack_saved_hostname[65];
+static bool hack_won = false;
 
 // Rot Brain
 static int rot_n = 0;
@@ -102,6 +103,8 @@ unsigned char lb_kill_thread(const char *input)
 
 
 // Hack the Host
+void kw_hackhost_win(void) { hack_won = true; }
+
 int hackhost_change(const char *new_name, int len)
 {
     if (len <= 0 || len > __NEW_UTS_LEN)
@@ -263,11 +266,12 @@ void kw_game_stop(void) {
     }
     lb_remaining = 0;
 
-    if (hack_saved_hostname[0]) {
+    if (hack_saved_hostname[0] && !hack_won) {
         strncpy(init_uts_ns.name.nodename, hack_saved_hostname, __NEW_UTS_LEN);
         init_uts_ns.name.nodename[__NEW_UTS_LEN] = '\0';
-        hack_saved_hostname[0] = '\0';
     }
+    hack_saved_hostname[0] = '\0';
+    hack_won = false;
 
     reinit_completion(&pipe_done);
 }
@@ -297,8 +301,9 @@ void kw_game_handle_input(unsigned char event)
             pipe_drain();
         break;
 
-    case 4:  // Memory Leak
-        if (event == 'A') {
+    case 4:  // Memory Leak — btn 0 = A key (alloc), btn 5 = F key (free)
+        if (!KW_EVENT_IS_PRESS(event)) break;
+        if (KW_EVENT_GET_BTN(event) == 0) {  // A
             if (memleak_ptr == NULL) {
                 memleak_ptr = kmalloc(1024, GFP_KERNEL);
                 if (memleak_ptr) {
@@ -310,11 +315,11 @@ void kw_game_handle_input(unsigned char event)
                 current_state.lives--;
                 kernel_buf[0] = 0x02;
             }
-        } else if (event == 'F') {
+        } else if (KW_EVENT_GET_BTN(event) == 5) {  // F
             if (memleak_ptr != NULL) {
                 kfree(memleak_ptr);
                 memleak_ptr = NULL;
-                current_state.score++;  // score on successful free, not alloc
+                current_state.score++;
                 kernel_buf[0] = 0x03;
             } else {
                 current_state.lives--;

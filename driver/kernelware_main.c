@@ -64,6 +64,7 @@ static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, l
     // Hack the Host: player types a new hostname
     if (current_state.game_id == 7 && buf_len >= 1) {
         if (hackhost_change(kernel_buf, buf_len)) {
+            kw_hackhost_win();
             kernel_buf[0] = KW_EVENT_CORRECT;
             buf_len = 1;
             data_ready = 1;
