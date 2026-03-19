@@ -33,6 +33,7 @@ void *input_thread(void *arg) {
 
 void* render_thread(void* arg)
 {
+    (void)arg;
     initscr();
     noecho();
     curs_set(0);
