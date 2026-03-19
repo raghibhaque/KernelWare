@@ -15,9 +15,7 @@ volatile char last_key = ' ';
 volatile int currentScreen = 0;
 volatile int input_active = 0;
 int driverFD = 0;
-
 volatile int active_game = -1;
-//void drawGame1();
 
 
 
