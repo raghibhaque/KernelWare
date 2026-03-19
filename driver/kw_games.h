@@ -17,6 +17,7 @@ void rotbrain_start(void);
 int rotbrain_check_answer(const char *input);
 int kw_games_pick(int prev);
 unsigned char lb_kill_thread(const char *input);
+int hackhost_change(const char *new_name, int len);
 
 
 #endif

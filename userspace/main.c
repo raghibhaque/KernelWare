@@ -99,6 +99,12 @@ void *game_manager_thread(void *arg) {
         ioctl(driverFD, KW_IOCTL_START, 0); // 0 for random game
         }
 
+        // submit final score to kernel leaderboard
+        pthread_mutex_lock(&game_mutex);
+        int final_score = game_shared.score;
+        pthread_mutex_unlock(&game_mutex);
+        ioctl(driverFD, KW_IOCTL_SUBMIT_SCORE, final_score);
+
         // game over — wait for any key to return to start
         currentScreen = -1;
         while (currentScreen == -1) usleep(100000);

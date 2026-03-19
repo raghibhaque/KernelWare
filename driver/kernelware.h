@@ -10,6 +10,9 @@ struct my_driver_state {
 
 extern struct my_driver_state drv_state;
 
+#define LEADERBOARD_SIZE 5
+extern int leaderboard[LEADERBOARD_SIZE];
+
 // Proc lifecycle - called from kernelware_main.c
 int  my_proc_init(void);
 void my_proc_exit(void);

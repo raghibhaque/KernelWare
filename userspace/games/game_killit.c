@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include <pthread.h>
 #include <ncurses.h>
 #include <sys/ioctl.h>
@@ -17,7 +18,7 @@ int game_killit_run(int fd)
     // Spawn a real child process to be killed
     pid_t child = fork();
     if (child == 0) {
-        // Child: sleep until killed
+        prctl(PR_SET_NAME, "kw_killit_target");
         while (1) pause();
         _exit(0);
     }

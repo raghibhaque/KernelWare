@@ -22,6 +22,9 @@ void game_typefaster_draw(void);
 int  game_loadbalancer_run(int fd);
 void game_loadbalancer_draw(void);
 
+int  game_hackthehost_run(int fd);
+void game_hackthehost_draw(void);
+
 
 game_def_t games[] = {
     {
@@ -59,6 +62,12 @@ game_def_t games[] = {
         .input_mode = INPUT_MODE_TEXT,
         .run  = game_loadbalancer_run,
         .draw = game_loadbalancer_draw,
+    },
+    {
+        .name = "HACK THE HOST - Change the kernel hostname",
+        .input_mode = INPUT_MODE_TEXT,
+        .run  = game_hackthehost_run,
+        .draw = game_hackthehost_draw,
     },
 };
 int num_games = sizeof(games) / sizeof(games[0]);

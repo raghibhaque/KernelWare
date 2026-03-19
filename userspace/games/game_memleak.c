@@ -35,8 +35,7 @@ int game_memleak_run(int fd)
         pthread_mutex_lock(&game_mutex);
         switch (response) {
         case 0x01:
-            ml_score++;
-            snprintf(game_shared.message, 128, "Allocated! Now free it.");
+            snprintf(game_shared.message, 128, "Allocated! Now press F to free it.");
             snprintf(game_shared.subtext,  128, "Score: %d/%d", ml_score, WIN_SCORE);
             break;
         case 0x02:
@@ -45,7 +44,8 @@ int game_memleak_run(int fd)
             snprintf(game_shared.subtext,  128, "Lives lost. Free first.");
             break;
         case 0x03:
-            snprintf(game_shared.message, 128, "Freed correctly! Alloc again.");
+            ml_score++;
+            snprintf(game_shared.message, 128, "Freed! Press A to alloc again.");
             snprintf(game_shared.subtext,  128, "Score: %d/%d", ml_score, WIN_SCORE);
             break;
         case 0x04:

@@ -6,6 +6,7 @@
 #include <linux/random.h>
 #include <linux/string.h>
 #include <linux/ktime.h>
+#include <linux/utsname.h>
 #include "../shared/kw_ioctl.h"
 #include "kw_games.h"
 #include "kw_driver.h"
@@ -33,6 +34,9 @@ static int fill_count = 0; // pipe dream
 static struct task_struct *lb_threads[LB_THREAD_COUNT];
 static bool lb_alive[LB_THREAD_COUNT];
 static int lb_remaining = 0;
+
+// Hack the Host
+static char hack_saved_hostname[65];
 
 // Rot Brain
 static int rot_n = 0;
@@ -94,6 +98,17 @@ unsigned char lb_kill_thread(const char *input)
     lb_remaining--;
 
     return (lb_remaining <= 0) ? KW_EVENT_CORRECT : 0x01;
+}
+
+
+// Hack the Host
+int hackhost_change(const char *new_name, int len)
+{
+    if (len <= 0 || len > __NEW_UTS_LEN)
+        return 0;
+    strncpy(init_uts_ns.name.nodename, new_name, __NEW_UTS_LEN);
+    init_uts_ns.name.nodename[__NEW_UTS_LEN] = '\0';
+    return 1;
 }
 
 
@@ -196,6 +211,14 @@ int kw_game_start(int game_id) {
         return 0;
     }
 
+    if (game_id == 7) {
+        strncpy(hack_saved_hostname, init_uts_ns.name.nodename, sizeof(hack_saved_hostname) - 1);
+        hack_saved_hostname[sizeof(hack_saved_hostname) - 1] = '\0';
+        strncpy(current_state.prompt, hack_saved_hostname, sizeof(current_state.prompt) - 1);
+        kw_timer_start(timer_duration_ms);
+        return 0;
+    }
+
     // game 1 - Pipe Dream
     pipe_thread = kthread_run(pipe_writer_fn, NULL, "kw_pipe_writer");
     if (IS_ERR(pipe_thread)) {
@@ -208,8 +231,8 @@ int kw_game_start(int game_id) {
 }
 
 int kw_games_pick(int prev) {
-    int ids[] = {1, 2, 3, 4, 5, 6};
-    int n = 6;
+    int ids[] = {1, 2, 3, 4, 5, 6, 7};
+    int n = 7;
     int pick;
     do {
         pick = ids[get_random_u32() % n];
@@ -239,6 +262,12 @@ void kw_game_stop(void) {
         }
     }
     lb_remaining = 0;
+
+    if (hack_saved_hostname[0]) {
+        strncpy(init_uts_ns.name.nodename, hack_saved_hostname, __NEW_UTS_LEN);
+        init_uts_ns.name.nodename[__NEW_UTS_LEN] = '\0';
+        hack_saved_hostname[0] = '\0';
+    }
 
     reinit_completion(&pipe_done);
 }
@@ -273,7 +302,6 @@ void kw_game_handle_input(unsigned char event)
             if (memleak_ptr == NULL) {
                 memleak_ptr = kmalloc(1024, GFP_KERNEL);
                 if (memleak_ptr) {
-                    current_state.score++;
                     kernel_buf[0] = 0x01;
                 } else {
                     kernel_buf[0] = 0x00;
@@ -286,6 +314,7 @@ void kw_game_handle_input(unsigned char event)
             if (memleak_ptr != NULL) {
                 kfree(memleak_ptr);
                 memleak_ptr = NULL;
+                current_state.score++;  // score on successful free, not alloc
                 kernel_buf[0] = 0x03;
             } else {
                 current_state.lives--;

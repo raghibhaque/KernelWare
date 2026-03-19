@@ -31,6 +31,8 @@ struct kw_config current_config = {0};
 // Define shared struct
 struct my_driver_state drv_state = {0};
 
+int leaderboard[LEADERBOARD_SIZE] = {0};
+
 
 static ssize_t kw_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
@@ -58,6 +60,17 @@ static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, l
 
     buf_len = bytes;
     kernel_buf[bytes] = '\0';
+
+    // Hack the Host: player types a new hostname
+    if (current_state.game_id == 7 && buf_len >= 1) {
+        if (hackhost_change(kernel_buf, buf_len)) {
+            kernel_buf[0] = KW_EVENT_CORRECT;
+            buf_len = 1;
+            data_ready = 1;
+            wake_up_interruptible(&my_wq);
+        }
+        return bytes;
+    }
 
     // Load Balancer: player types a thread ID (single digit)
     if (current_state.game_id == 6 && buf_len >= 1) {
@@ -131,6 +144,19 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         current_state.difficulty = current_config.difficulty;
         current_state.score      = 0;
         return 0;
+
+    case KW_IOCTL_SUBMIT_SCORE: {
+        int score = (int)arg;
+        for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+            if (score > leaderboard[i]) {
+                for (int j = LEADERBOARD_SIZE - 1; j > i; j--)
+                    leaderboard[j] = leaderboard[j - 1];
+                leaderboard[i] = score;
+                break;
+            }
+        }
+        return 0;
+    }
 
     case KW_IOCTL_SET_PROMPT:
         if (copy_from_user(current_state.prompt, (char __user *)arg, sizeof(current_state.prompt)))
