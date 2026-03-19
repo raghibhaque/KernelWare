@@ -27,12 +27,12 @@ void kw_state_init(void) {
 void kw_state_start_round(char playerName[16]) {
     unsigned long flags;
 
-    pr_info("Starting new round | difficulty=%u\n", difficulty);
+    pr_info("Starting new round | difficulty=%u\n", game_state.difficulty);
 
     spin_lock_irqsave(&game_state.lock, flags);
 
     // Reset game's state
-    game_state.username = playerName;
+    strncpy(game_state.username, playerName, sizeof(game_state.username));
     game_state.previous_game = -1;
     game_state.current_game_id = kw_games_pick(-1);
     kw_games_get_prompt(game_state.current_game_id, game_state.prompt, sizeof(game_state.prompt));
@@ -54,8 +54,8 @@ void kw_state_start_round(char playerName[16]) {
 void kw_state_next_game(void) {
     unsigned long flags;
 
-    if (games_played % 3 == 0) {
-        difficulty -= 0.1;
+    if (game_state.games_played % 3 == 0) {
+        game_state.difficulty -= 0.1;
         pr_info("Game speeding up!");
     }
 
@@ -132,19 +132,11 @@ int kw_state_get_info(char *buf, size_t size) {
     spin_lock_irqsave(&game_state.lock, flags);
 
     len = snprintf(buf, size, // writes game state info to buffer and returns to proc
-                    "Player: %s\n",
-                    "Game: %u\n",
-                    "Score: %u\n",
-                    "Lives: %u\n",
-                    "Difficulty: %u\n",
-                    "Games played: %d\n",
-                    "Active: %s\n",
-                    "Prompt: %s\n",
+                    "Player: %s\nGame: %d\nScore: %d\nLives: %d\nGames played: %d\nActive: %s\nPrompt: %s\n",
                     game_state.username,
                     game_state.current_game_id,
                     game_state.score,
                     game_state.lives,
-                    game_state.difficulty,
                     game_state.games_played,
                     game_state.game_active ? "yes" : "no",
                     game_state.prompt);
