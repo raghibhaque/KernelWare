@@ -20,37 +20,11 @@ volatile int active_game = -1;
 //void drawGame1();
 
 
-/*
-static void *run_game(void *arg) {
-    int idx = (int)(intptr_t)arg;
-    games[idx].run(driverFD);
-    return NULL;
-}
-    */
 
 
 void *game_manager_thread(void *arg) {
     (void)arg;
-    //pthread_t game_thread;
-/*
-    while (1) {
-        int wanted = currentScreen - 1;
-
-        if (wanted != active_game) {
-            // stop the currently running game if there is one
-            if (active_game >= 0) {
-                pthread_join(game_thread, NULL);
-            }
-            // start the new game if valid
-            if (wanted >= 0 && wanted < num_games) {
-                active_game = wanted;
-                pthread_create(&game_thread, NULL, run_game, (void *)(intptr_t)wanted);
-            } else {
-                active_game = -1;
-            }
-        }
-        usleep(100000);
-*/
+    
     while (1) {
         // wait for start screen input
         while (currentScreen == 0) usleep(100000);
@@ -83,7 +57,7 @@ void *game_manager_thread(void *arg) {
             int score     = game_shared.score;
             pthread_mutex_unlock(&game_mutex);
 
-            /* sync session score/lives into kernel so /proc/kernelware/stats reflects them */
+            // sync session score/lives into kernel so /proc/kernelware/stats reflects them 
             struct kw_config sync_cfg = { .lives = remaining, .score = score };
             ioctl(driverFD, KW_IOCTL_SET_CONFIG, &sync_cfg);
 
@@ -96,11 +70,7 @@ void *game_manager_thread(void *arg) {
                 ioctl(driverFD, KW_IOCTL_SET_DIFF, timer_ms);
             }
 
-            memset(&state, 0, sizeof(state));
-            ioctl(driverFD, KW_IOCTL_GET_STATE, &state);
-            game_id = state.game_id;
-            if (game_id < 1 || game_id > num_games) break;
-        ioctl(driverFD, KW_IOCTL_START, 0); // 0 for random game
+            ioctl(driverFD, KW_IOCTL_START, 0);
         }
 
         // submit final score to kernel leaderboard
@@ -109,7 +79,7 @@ void *game_manager_thread(void *arg) {
         pthread_mutex_unlock(&game_mutex);
         ioctl(driverFD, KW_IOCTL_SUBMIT_SCORE, final_score);
 
-        // game over — wait for any key to return to start
+        // game over, wait for any key to return to start
         currentScreen = -1;
         while (currentScreen == -1) usleep(100000);
     }

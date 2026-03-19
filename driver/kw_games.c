@@ -392,7 +392,6 @@ void kw_game_handle_input(unsigned char event)
             current_state.score = (typefaster_count * 100) / TYPEFASTER_TARGET;
             if (current_state.score > 100) current_state.score = 100;
             if (typefaster_count >= TYPEFASTER_TARGET)
-            game_state.answer_correct = true;
             kernel_buf[0] = (unsigned char)(current_state.score & 0xFF);
             buf_len = 1;
             data_ready = 1;
