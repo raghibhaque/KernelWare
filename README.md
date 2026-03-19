@@ -8,16 +8,9 @@
 ## Setup
 
 ```bash
-cd driver/
-make
-cd ..
-
-cd scripts/
-sudo bash load.sh
-cd ..
-
-cd userspace/
-make
+cd KernelWare/scripts/
+sudo bash QuickStart.sh
+cd ../userspace/
 ./game
 ```
 
