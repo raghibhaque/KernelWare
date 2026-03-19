@@ -38,6 +38,7 @@ struct kw_stats {
 #define KW_EVENT_BTN(i) (((i) << 4) | 0x01)
 #define KW_EVENT_GET_BTN(e) (((e) >> 4) & 0x0F)
 #define KW_EVENT_IS_PRESS(e) (((e) & 0x0F) == 0x01)
+#define KW_EVENT_CORRECT 0xFE
 
 // write() command bytes
 #define KW_CMD_START_ROUND 0xA0

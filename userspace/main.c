@@ -14,22 +14,48 @@ volatile char last_key = ' '; // shared variable, we dont want the system to opt
 volatile int currentScreen = 0;
 int driverFD = 0;
 
+volatile int active_game = -1;
+//void drawGame1();
 
-void drawGame1();
 
 
+static void *run_game(void *arg) {
+    int idx = (int)(intptr_t)arg;
+    games[idx].run(driverFD);
+    return NULL;
+}
 
-void* thread_function(void* arg) {
+
+void *game_manager_thread(void *arg) {
     (void)arg;
-    if (currentScreen >= 0 && currentScreen < num_games) {
-        games[currentScreen].run(driverFD);
+    pthread_t game_thread;
+
+    while (1) {
+        int wanted = currentScreen - 1;
+
+        if (wanted != active_game) {
+            // stop the currently running game if there is one
+            if (active_game >= 0) {
+                pthread_join(game_thread, NULL);
+            }
+            // start the new game if valid
+            if (wanted >= 0 && wanted < num_games) {
+                active_game = wanted;
+                pthread_create(&game_thread, NULL, run_game, (void *)(intptr_t)wanted);
+            } else {
+                active_game = -1;
+            }
+        }
+        usleep(100000);
     }
     return NULL;
 }
 
+
 void *input_thread(void *arg) {
     return kw_input_thread(arg);  // your function from input.c
 }
+
 
 void* render_thread(void* arg)
 {
@@ -69,7 +95,8 @@ void* render_thread(void* arg)
     endwin();
     return NULL;
 }
-    
+
+/*
 void drawGame1()
 {
     static char prev_key = ' ';
@@ -90,7 +117,7 @@ void drawGame1()
         prev_key = last_key;
     }
 }
-
+*/
 
 int main() {
 
@@ -122,7 +149,7 @@ int main() {
         return 1;
     }
 
-    if (pthread_create(&threads[2], NULL, thread_function, &ids[2]) != 0) {
+    if (pthread_create(&threads[2], NULL, game_manager_thread, &ids[2]) != 0) {
         perror("pthread_create");
         return 1;
     }

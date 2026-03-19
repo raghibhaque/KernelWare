@@ -7,6 +7,8 @@
 #include "../../shared/kw_ioctl.h"
 #include "games.h"
 
+extern volatile int currentScreen;
+
 void game_pipedream_run(int fd)
 {
     ioctl(fd, KW_IOCTL_START, 1);
@@ -20,6 +22,7 @@ void game_pipedream_run(int fd)
 
     unsigned char event;
     while (1) {
+        
         ssize_t n = read(fd, &event, 1);
         if (n <= 0) break;
 
@@ -52,6 +55,7 @@ void game_pipedream_run(int fd)
     }
     ioctl(fd, KW_IOCTL_STOP);
     sleep(2);
+    currentScreen = 0;
 }
 
 void game_pipedream_draw(void)  {

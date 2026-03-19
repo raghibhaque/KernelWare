@@ -1,0 +1,14 @@
+{
+    "files.exclude": {
+        "driver/*.o": true,
+        "driver/*.ko": true,
+        "driver/*.mod": true,
+        "driver/*.mod.c": true,
+        "driver/modules.order": true,
+        "driver/Module.symvers": true,
+        "driver/.*.cmd": true,
+        "driver/.cache": true,
+        "driver/signing_key.pem": true,
+        "driver/signing_cert.pem": true
+    }
+}

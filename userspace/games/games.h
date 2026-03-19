@@ -3,9 +3,16 @@
 
 #include <pthread.h>
 
+typedef enum {
+    INPUT_MODE_BUTTONS,   
+    INPUT_MODE_TEXT
+} input_mode_t;
+
+
 // Interface that everygame must implement
 typedef struct {
     const char *name;
+    input_mode_t input_mode;
     void (*run)(int fd);
     void (*draw)(void);
 } game_def_t;
@@ -17,10 +24,14 @@ extern int        num_games;
 typedef struct {
     int  score;
     int  lives;
-    int  fill_percent;
+    int  fill_percent;    // for Pipe Dream
     int  time_left_ms;
-    char message[128];
+    char message[300];
     char subtext[128];
+    char prompt[256];     // any game that shows a word
+    char typed[64];       // text-input games
+    int  typed_len;       // current length of typed buffer
+    int solved;
 } game_shared_t;
 
 extern game_shared_t   game_shared;
@@ -28,7 +39,7 @@ extern pthread_mutex_t game_mutex;
 
 #define GAME_SET_MSG(msg, sub) do {                         \
     pthread_mutex_lock(&game_mutex);                        \
-    snprintf(game_shared.message, 128, "%s", (msg));        \
+    snprintf(game_shared.message, 300, "%s", (msg));        \
     snprintf(game_shared.subtext, 128, "%s", (sub));        \
     pthread_mutex_unlock(&game_mutex);                      \
 } while(0)

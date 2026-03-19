@@ -17,6 +17,9 @@ static struct task_struct *pipe_thread;
 static int active_game_id;
 
 static int fill_count = 0; // pipe dream
+// Rot Brain
+static int rot_n = 0;
+static char rot_answer[64];
 
 static int pipe_writer_fn(void *data) {
     while (!kthread_should_stop()) {
@@ -43,10 +46,53 @@ static int pipe_writer_fn(void *data) {
     return 0;
 }
 
+
+//Rot Brain
+static void rotbrain_apply(const char *input, char *output, int n)
+{
+    for (int i = 0; input[i]; i++) {
+        char c = input[i];
+        if (c >= 'a' && c <= 'z')
+            output[i] = 'a' + (c - 'a' + n) % 26;
+        else if (c >= 'A' && c <= 'Z')
+            output[i] = 'A' + (c - 'A' + n) % 26;
+        else
+            output[i] = c;
+    }
+    output[strlen(input)] = '\0';
+}
+
+
+void rotbrain_start(void)
+{
+    const char *words[] = {"kernel", "module", "driver", "process", "thread"};
+    int word_idx = get_random_u32() % 5;
+    rot_n = (get_random_u32() % 12) + 1;  // ROT-1 to ROT-12
+
+    strncpy(rot_answer, words[word_idx], sizeof(rot_answer) - 1);
+    rotbrain_apply(words[word_idx], current_state.prompt, rot_n);
+
+    current_state.score = 0;
+    data_ready = 0;
+}
+
+
+int rotbrain_check_answer(const char *input)
+{
+    return strncmp(input, rot_answer, strlen(rot_answer)) == 0;
+}
+
+
 int kw_game_start(int game_id) {
     active_game_id = game_id;
     fill_count = 0;
     reinit_completion(&pipe_done);
+    
+    if (game_id == 2) {
+        rotbrain_start();
+        return 0;
+    }
+    
     pipe_thread = kthread_run(pipe_writer_fn, NULL, "kw_pipe_writer");
 
     if (IS_ERR(pipe_thread)) {
@@ -91,8 +137,9 @@ void kw_game_handle_input(unsigned char event)
         if (KW_EVENT_IS_PRESS(event))
             pipe_drain();
         break;
-
-    case 2:  // memory leak -> 'A' allocates, 'F' frees
+    }
+        /*
+    case 3:  // memory leak -> 'A' allocates, 'F' frees
         if (event == 'A') {
             current_state.score++;
         } else if (event == 'F') {
@@ -103,6 +150,7 @@ void kw_game_handle_input(unsigned char event)
         }
         break;
     }
+*/
 }
 
 

@@ -55,13 +55,21 @@ static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, l
     buf_len = bytes;
     kernel_buf[bytes] = '\0';
 
+    if (current_state.game_id == 2 && buf_len > 1) {
+        if (rotbrain_check_answer(kernel_buf)) {
+            kernel_buf[0] = KW_EVENT_CORRECT;
+            buf_len = 1;
+            data_ready = 1;
+            wake_up_interruptible(&my_wq);
+        }
+        // wrong answer - do nothing, let player keep trying
+        return bytes;
+    }
 
-    kw_game_handle_input(kernel_buf[0]); // game by game input handling
-
-
+    // all other games - button input handling
+    kw_game_handle_input(kernel_buf[0]);
     data_ready = 1;
     wake_up_interruptible(&my_wq);
-
     return bytes;
 }
 
@@ -72,7 +80,7 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     switch (cmd) {
 
     case KW_IOCTL_START:
-        current_state.game_id = 1;
+        current_state.game_id = (int)arg;
         kw_game_start(current_state.game_id);
         return 0;
 
@@ -96,6 +104,9 @@ static long kw_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         current_state.score      = 0;
         return 0;
 
+    case KW_IOCTL_STOP:
+        kw_game_stop();
+        return 0;
     default:
         return -ENOTTY;  // standard "not a valid ioctl" error
     }
