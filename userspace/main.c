@@ -12,6 +12,7 @@
 #define NUMOFTHREADS 3
 volatile char last_key = ' '; // shared variable, we dont want the system to optomise it
 volatile int currentScreen = 0;
+volatile int input_active = 0;
 int driverFD = 0;
 
 
