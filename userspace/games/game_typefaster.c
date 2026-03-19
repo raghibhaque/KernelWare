@@ -17,10 +17,9 @@ int game_typefaster_run(int fd)
         struct kw_state state = {0};
         ioctl(fd, KW_IOCTL_GET_STATE, &state);
 
-        
+
         pthread_mutex_lock(&game_mutex);
-        game_shared.score      = state.score;
-        game_shared.fill_percent = state.score;  
+        game_shared.fill_percent = state.score;
         snprintf(game_shared.message, 128, "MASH ANY KEY!");
         snprintf(game_shared.subtext,  128, "Progress: %d%%", state.score);
         pthread_mutex_unlock(&game_mutex);

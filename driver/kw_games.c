@@ -17,16 +17,22 @@
 #define PIPE_BUF_MAX ((int)(sizeof(kernel_buf) - 1))
 #define FILL_BYTE 0xBB
 #define FILL_INTERVAL 200
-#define TYPEFASTER_TARGET 20  // type faster, goal amount
+#define TYPEFASTER_TARGET 20
+#define LB_THREAD_COUNT 3
 
 static DECLARE_COMPLETION(pipe_done);
 static struct task_struct *pipe_thread;
 static int active_game_id;
 unsigned int timer_duration_ms = 10000;
 static void *memleak_ptr = NULL;
-static int typefaster_count = 0; // type faster
+static int typefaster_count = 0;
 
 static int fill_count = 0; // pipe dream
+
+// Load Balancer
+static struct task_struct *lb_threads[LB_THREAD_COUNT];
+static bool lb_alive[LB_THREAD_COUNT];
+static int lb_remaining = 0;
 
 // Rot Brain
 static int rot_n = 0;
@@ -61,6 +67,33 @@ static int pipe_writer_fn(void *data) {
     }
     complete(&pipe_done);
     return 0;
+}
+
+
+// Load Balancer
+static int lb_thread_fn(void *data)
+{
+    while (!kthread_should_stop())
+        schedule();
+    return 0;
+}
+
+unsigned char lb_kill_thread(const char *input)
+{
+    int id = input[0] - '0';
+    if (id < 1 || id > LB_THREAD_COUNT)
+        return 0x02;
+
+    int idx = id - 1;
+    if (!lb_alive[idx])
+        return 0x02;
+
+    kthread_stop(lb_threads[idx]);
+    lb_threads[idx] = NULL;
+    lb_alive[idx] = false;
+    lb_remaining--;
+
+    return (lb_remaining <= 0) ? KW_EVENT_CORRECT : 0x01;
 }
 
 
@@ -139,11 +172,28 @@ int kw_game_start(int game_id) {
     }
 
     if (game_id == 5) {
-    typefaster_count = 0;
-    current_state.score = 0;
-    current_state.prompt[0] = '\0';
-    kw_timer_start(timer_duration_ms);
-    return 0;
+        typefaster_count = 0;
+        current_state.score = 0;
+        current_state.prompt[0] = '\0';
+        kw_timer_start(timer_duration_ms);
+        return 0;
+    }
+
+    if (game_id == 6) {
+        lb_remaining = 0;
+        for (int i = 0; i < LB_THREAD_COUNT; i++) {
+            lb_alive[i] = false;
+            lb_threads[i] = kthread_run(lb_thread_fn, NULL, "kw_lb_%d", i + 1);
+            if (!IS_ERR(lb_threads[i])) {
+                lb_alive[i] = true;
+                lb_remaining++;
+            } else {
+                lb_threads[i] = NULL;
+            }
+        }
+        snprintf(current_state.prompt, sizeof(current_state.prompt), "1 2 3");
+        kw_timer_start(timer_duration_ms);
+        return 0;
     }
 
     // game 1 - Pipe Dream
@@ -158,8 +208,8 @@ int kw_game_start(int game_id) {
 }
 
 int kw_games_pick(int prev) {
-    int ids[] = {1, 2, 3, 4,5};
-    int n = 5;
+    int ids[] = {1, 2, 3, 4, 5, 6};
+    int n = 6;
     int pick;
     do {
         pick = ids[get_random_u32() % n];
@@ -177,9 +227,18 @@ void kw_game_stop(void) {
     }
 
     if (memleak_ptr) {
-    kfree(memleak_ptr);
-    memleak_ptr = NULL;
+        kfree(memleak_ptr);
+        memleak_ptr = NULL;
     }
+
+    for (int i = 0; i < LB_THREAD_COUNT; i++) {
+        if (lb_threads[i]) {
+            kthread_stop(lb_threads[i]);
+            lb_threads[i] = NULL;
+            lb_alive[i] = false;
+        }
+    }
+    lb_remaining = 0;
 
     reinit_completion(&pipe_done);
 }

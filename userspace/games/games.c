@@ -19,6 +19,8 @@ void game_memleak_draw(void);
 int  game_typefaster_run(int fd);
 void game_typefaster_draw(void);
 
+int  game_loadbalancer_run(int fd);
+void game_loadbalancer_draw(void);
 
 
 game_def_t games[] = {
@@ -51,7 +53,12 @@ game_def_t games[] = {
         .input_mode = INPUT_MODE_BUTTONS,
         .run        = game_typefaster_run,
         .draw       = game_typefaster_draw,
-
+    },
+    {
+        .name = "LOAD BALANCER - Kill all rogue kthreads",
+        .input_mode = INPUT_MODE_TEXT,
+        .run  = game_loadbalancer_run,
+        .draw = game_loadbalancer_draw,
     },
 };
 int num_games = sizeof(games) / sizeof(games[0]);

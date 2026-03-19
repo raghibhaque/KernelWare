@@ -59,6 +59,16 @@ static ssize_t kw_write(struct file *file, const char __user *buf, size_t len, l
     buf_len = bytes;
     kernel_buf[bytes] = '\0';
 
+    // Load Balancer: player types a thread ID (single digit)
+    if (current_state.game_id == 6 && buf_len >= 1) {
+        unsigned char result = lb_kill_thread(kernel_buf);
+        kernel_buf[0] = result;
+        buf_len = 1;
+        data_ready = 1;
+        wake_up_interruptible(&my_wq);
+        return bytes;
+    }
+
     //FOR TEXT INPUTS
     if ((current_state.game_id == 2 || current_state.game_id == 3) && buf_len > 1) {
         int correct = (current_state.game_id == 2)
