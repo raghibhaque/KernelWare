@@ -12,6 +12,7 @@
 #include "kw_state.h"
 #include "kw_timer.h"
 #include <linux/completion.h>
+#include <linux/slab.h>
 
 #define PIPE_BUF_MAX ((int)(sizeof(kernel_buf) - 1))
 #define FILL_BYTE 0xBB
@@ -21,6 +22,7 @@ static DECLARE_COMPLETION(pipe_done);
 static struct task_struct *pipe_thread;
 static int active_game_id;
 unsigned int timer_duration_ms = 10000;
+static void *memleak_ptr = NULL;
 
 void kw_set_timer_ms(unsigned int ms) {
     timer_duration_ms = ms;
@@ -67,6 +69,11 @@ int kw_game_start(int game_id) {
     buf_len = 0;
     kernel_buf[0] = 0;
 
+    if (memleak_ptr) {
+    kfree(memleak_ptr);
+    memleak_ptr = NULL;
+    }
+
     if (game_id == 2) {
         u32 pid = get_random_u32() % 65534 + 1;
         snprintf(current_state.prompt, sizeof(current_state.prompt), "%u", pid);
@@ -85,6 +92,12 @@ void kw_game_stop(void) {
             kthread_stop(pipe_thread);
         pipe_thread = NULL;
     }
+
+    if (memleak_ptr) {
+    kfree(memleak_ptr);
+    memleak_ptr = NULL;
+    }
+
     reinit_completion(&pipe_done);
 }
 
@@ -107,6 +120,35 @@ void pipe_drain(void)
 void kw_game_handle_input(unsigned char event)
 {
     switch (active_game_id) {
+        case 1 :
+        if (event == 'A') {
+            if (memleak_ptr == NULL) {
+                memleak_ptr = kmalloc(1024, GFP_KERNEL);
+                if (memleak_ptr) {
+                    current_state.score++;
+                    kernel_buf[0] = 0x01;  
+                } else {
+                    kernel_buf[0] = 0x00;  
+                }
+            } else {
+                current_state.lives--;
+                kernel_buf[0] = 0x02; // leak
+            }
+        } else if (event == 'F') {
+            if (memleak_ptr != NULL) {
+                kfree(memleak_ptr);
+                memleak_ptr = NULL;
+                kernel_buf[0] = 0x03;      
+            } else {
+                current_state.lives--;
+                kernel_buf[0] = 0x04;   
+            }
+        }
+        buf_len = 1;
+        data_ready = 1;
+        wake_up_interruptible(&my_wq);
+        break;
+
     case 2:  // kill it -> compare typed PID to prompt
         if (strcmp(kernel_buf, current_state.prompt) == 0) {
             current_state.score++;
