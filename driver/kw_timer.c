@@ -38,8 +38,7 @@ static enum hrtimer_restart kw_timer_callback(struct hrtimer *timer) {
 
 // called in kernelware_main.c when loading the module
 int kw_timer_init(void) {
-    hrtimer_init(&game_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-    game_timer.function = kw_timer_callback;
+    hrtimer_setup(&game_timer, kw_timer_callback,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     timer_active = false;
     return 0;
 }
